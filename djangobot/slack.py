@@ -63,7 +63,7 @@ class SlackAPI(object):
 
         Args:
             method: {str} method name to call
-            params: {dict} GET parameters
+            params: {dict} JSON parameters
                 The token will always be added
         """
         headers = {
@@ -80,8 +80,8 @@ class SlackAPI(object):
 
         Args:
             method: {str} method name to call
-            params: {dict} GET parameters
-                The token will always be added
+            request_method: {str} HTTP method to use for the call.
+            request_kwargs: {dict} arguments to pass to the requests call
         """
         url = self.url.format(method=method)
         logger.debug('Send request to %s', url)
