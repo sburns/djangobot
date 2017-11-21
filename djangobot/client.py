@@ -19,6 +19,7 @@ def pack(message):
     """
     return json.dumps(message).encode('utf8')
 
+
 def unpack(text):
     """
     Decode & Load
@@ -113,7 +114,13 @@ class SlackClientProtocol(WebSocketClientProtocol):
         Send message to Slack
         """
         channel = message.get('channel', 'general')
-        self.sendMessage(self.make_message(message['text'], channel))
+        attachments = message.get('attachments', None)
+
+        if attachments:
+            self.slack.chat_post_message(channel=channel, text=message['text'],
+                                         attachments=attachments)
+        else:
+            self.sendMessage(self.make_message(message['text'], channel))
 
 
 class SlackClientFactory(WebSocketClientFactory):

@@ -28,11 +28,11 @@ class SlackAPI(object):
             self.token = token if token else os.environ['SLACK_TOKEN']
         except KeyError:
             raise ValueError('If not providing a token, must set SLACK_TOKEN envvar')
+        self.verify = verify
         if auth_test:
             response = self.auth_test()
             if not response['ok']:
                 raise ValueError('Authentication Failed with response: {}'.format(response))
-        self.verify = verify
 
         # Attributes backing properties
         self._channels = []
@@ -44,20 +44,49 @@ class SlackAPI(object):
 
     def _call_api(self, method, params=None):
         """
-        Low-level method to call the Slack API.
+        Low-level method to call the Slack API via GET.
 
         Args:
             method: {str} method name to call
             params: {dict} GET parameters
                 The token will always be added
         """
-        url = self.url.format(method=method)
         if not params:
             params = {'token': self.token}
         else:
             params['token'] = self.token
+        return self._api_call(method, 'get', {'params': params})
+
+    def _post_api(self, method, params=None):
+        """
+        Low-level method to call the Slack API via POST.
+
+        Args:
+            method: {str} method name to call
+            params: {dict} JSON parameters
+                The token will always be added
+        """
+        headers = {
+            'Authorization': 'Bearer {}'.format(self.token),
+        }
+        return self._api_call(method, 'post', {
+            'headers': headers,
+            'json': params,
+        })
+
+    def _api_call(self, method, request_method, request_kwargs):
+        """
+        Low-level method to call the Slack API.
+
+        Args:
+            method: {str} method name to call
+            request_method: {str} HTTP method to use for the call.
+            request_kwargs: {dict} arguments to pass to the requests call
+        """
+        url = self.url.format(method=method)
         logger.debug('Send request to %s', url)
-        response = requests.get(url, params=params).json()
+        response = getattr(requests, request_method)(url, **request_kwargs).json()
+
         if self.verify:
             if not response['ok']:
                 msg = 'For {url} API returned this bad response {response}'
@@ -87,13 +116,22 @@ class SlackAPI(object):
         """
         Call auth.test
         """
-        return self._call_api('auth.test')
+        return self._call_api('auth.test') and self._post_api('auth.test')
 
     def rtm_start(self):
         """
         Call rtm.start
         """
         return self._call_api('rtm.start')
+
+    def chat_post_message(self, **params):
+        """
+        Post to chat.postMessage
+
+        :param params: arguments to pass
+        :return:
+        """
+        self._post_api('chat.postMessage', params)
 
     # Translation
     def channel_from_name(self, name):
